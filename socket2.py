@@ -5,24 +5,13 @@ import select
 from neopixel import *
 import argparse
 import pickle
-
-
-# LED strip configuration:
-LED_COUNT      = 30      # Number of LED pixels.
-LED_PIN        = 18      # GPIO pin connected to the pixels (18 uses PWM!).
-#LED_PIN        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
-LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
-LED_DMA        = 10      # DMA channel to use for generating signal (try 10)
-LED_BRIGHTNESS = 200     # Set to 0 for darkest and 255 for brightest
-LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
-LED_CHANNEL    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
-LED_STRIP      = ws.SK6812W_STRIP
-strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP)
-strip.begin()
-
-class SocketServer:
+import time
+import threading
+class SocketServer(threading.Thread):
     """ Simple socket server that listens to one single client. """
-    def __init__(self, host = '0.0.0.0', port = 2010):
+    def __init__(self,strip, host = '0.0.0.0', port = 2010, *args, **kwargs):
+        super(SocketServer, self).__init__(*args, **kwargs)
+        self._stop = threading.Event()
         """ Initialize the server with a host and port to listen to. """
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -30,12 +19,19 @@ class SocketServer:
         self.port = port
         self.sock.bind((host, port))
         self.sock.listen(1)
+        self.strip = strip
+
+    def stop(self):
+        self._stop.set()
+
+    def stopped(self):
+        return self._stop.isSet()
 
     def stripColorSet(self, color):
         """Wipe color across display a pixel at a time."""
         for i in range(self.strip.numPixels()):
-            strip.setPixelColor(i, color)
-        strip.show()
+            self.strip.setPixelColor(i, color)
+        self.strip.show()
     def close(self):
         """ Close the server socket. """
         print('Closing server socket (host {}, port {})'.format(self.host, self.port))
@@ -44,7 +40,7 @@ class SocketServer:
             self.sock = None
         self.stripColorSet(Color(0,0,0))
 
-    def run_server(self):
+    def run(self):
         """ Accept and handle an incoming connection. """
         print('Starting socket server (host {}, port {})'.format(self.host, self.port))
 
@@ -57,6 +53,8 @@ class SocketServer:
         green = 0
         blue = 0
         while not stop:
+            if self.stopped():
+                return
             if client_sock:
                 # Check if the client is still connected and if data is available:
                 try:
@@ -89,15 +87,16 @@ class SocketServer:
         # Close socket
         print('Closing connection with {}'.format(client_addr))
         client_sock.close()
+        self.sock = None
         self.stripColorSet(Color(0,0,0))
-        return 0
+#        return 0
 
-continu=True
-while continu:
-    try:
-        server = SocketServer()
-        server.run_server()
-        continu = True
-    except KeyboardInterrupt:
-        server.close()
-        continu = False
+#continu=True
+#while continu:
+#    try:
+#        server = SocketServer()
+#        server.run_server()
+#        continu = True
+#    except KeyboardInterrupt:
+#        server.close()
+#        continu = False

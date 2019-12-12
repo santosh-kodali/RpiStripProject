@@ -19,10 +19,6 @@ class LightBulb(Accessory):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        while self.init_socket() != 1 :
-            time.sleep(2)
-
         # Set our neopixel API services up using Lightbulb base
         serv_light = self.add_preload_service(
             'Lightbulb', chars=['On', 'Hue', 'Saturation', 'Brightness'])
