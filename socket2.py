@@ -11,7 +11,7 @@ class SocketServer(threading.Thread):
     """ Simple socket server that listens to one single client. """
     def __init__(self,strip, host = '0.0.0.0', port = 2010, *args, **kwargs):
         super(SocketServer, self).__init__(*args, **kwargs)
-        self._stop = threading.Event()
+        self._stopp = threading.Event()
         """ Initialize the server with a host and port to listen to. """
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -21,11 +21,14 @@ class SocketServer(threading.Thread):
         self.sock.listen(1)
         self.strip = strip
 
-    def stop(self):
-        self._stop.set()
+    def stopit(self):
+        self._stopp.set()
+        #print(self._stop.isSet())
 
     def stopped(self):
-        return self._stop.isSet()
+        print(self._stopp.isSet())
+        print("hi")
+        return self._stopp.isSet()
 
     def stripColorSet(self, color):
         """Wipe color across display a pixel at a time."""
@@ -52,15 +55,17 @@ class SocketServer(threading.Thread):
         red = 0
         green = 0
         blue = 0
-        while not stop:
+        while True:
             if self.stopped():
+                return
+            if stop:
                 return
             if client_sock:
                 # Check if the client is still connected and if data is available:
                 try:
                     rdy_read, rdy_write, sock_err = select.select([client_sock,], [], [])
                 except select.error:
-                    print('Select() failed on socket with {}'.format(client_addr))
+       	            print('Select() failed on socket with {}'.format(client_addr))
                     return 1
 
                 if len(rdy_read) > 0:

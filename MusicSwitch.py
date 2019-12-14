@@ -25,14 +25,14 @@ class MusicStart(Accessory):
         """Execute sscript"""
         if self.state:
             print('terminate')
-            t1.stop()
-            t1.join()
+            self.t1.stopit()
+            self.t1.join()
              #   os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
             self.state = False
         else:
             #self.process = subprocess.Popen(['sudo', '/home/pi/myprojects/rpiAudioMain/socket2.py'], preexec_fn=os.setsid)
-            t1 = SocketServer(self.strip)
-            t1.start()
+            self.t1 = SocketServer(self.strip)
+            self.t1.start()
             self.state=True
         self.display.value = self.state
         self.display.notify()
