@@ -24,9 +24,11 @@ class MusicStart(Accessory):
     def execute_script(self, _value):
         """Execute sscript"""
         if self.state:
-            print('terminate')
+            print('call stop')
             self.t1.stopit()
-            self.t1.join()
+            print('stopped')
+#            self.t1.join()
+            print('joined')
              #   os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
             self.state = False
         else:

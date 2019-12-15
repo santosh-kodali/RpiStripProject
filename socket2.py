@@ -19,15 +19,13 @@ class SocketServer(threading.Thread):
         self.port = port
         self.sock.bind((host, port))
         self.sock.listen(1)
+        self.read_list = [self.sock]
         self.strip = strip
 
     def stopit(self):
         self._stopp.set()
-        #print(self._stop.isSet())
 
     def stopped(self):
-        print(self._stopp.isSet())
-        print("hi")
         return self._stopp.isSet()
 
     def stripColorSet(self, color):
@@ -35,64 +33,44 @@ class SocketServer(threading.Thread):
         for i in range(self.strip.numPixels()):
             self.strip.setPixelColor(i, color)
         self.strip.show()
-    def close(self):
-        """ Close the server socket. """
-        print('Closing server socket (host {}, port {})'.format(self.host, self.port))
-        if self.sock:
-            self.sock.close()
-            self.sock = None
-        self.stripColorSet(Color(0,0,0))
 
     def run(self):
         """ Accept and handle an incoming connection. """
         print('Starting socket server (host {}, port {})'.format(self.host, self.port))
-
-        client_sock, client_addr = self.sock.accept()
-
-        print('Client {} connected'.format(client_addr))
-
-        stop = False
-        red = 0
-        green = 0
-        blue = 0
+        client_sock = None
         while True:
             if self.stopped():
+                print("close socket server")
+                if client_sock:
+                    try:
+                        client_sock.close()
+                        self.read_list.remove(client_sock)
+                    except:
+                        pass
+                self.sock.close()
+                self.stripColorSet(Color(0,0,0))
+                print("done closing")
                 return
-            if stop:
-                return
-            if client_sock:
-                # Check if the client is still connected and if data is available:
-                try:
-                    rdy_read, rdy_write, sock_err = select.select([client_sock,], [], [])
-                except select.error:
-       	            print('Select() failed on socket with {}'.format(client_addr))
-                    return 1
-
-                if len(rdy_read) > 0:
-                    read_data = client_sock.recv(255)
-                    # Check if socket has been closed
-                    if len(read_data) == 0:
-                        print('{} closed the socket.'.format(client_addr))
-                        stop = True
-                    else:
+            readable, writable, errored = select.select(self.read_list, [], [], 1)
+            for s in readable:
+                if s is self.sock:
+                    client_sock, client_addr = self.sock.accept()
+                    self.read_list.append(client_sock)
+                else:
+                    data = client_sock.recv(255)
+                    if data:
                         try:
-                            read_data= pickle.loads(read_data)
+                            read_data= pickle.loads(data)
                         except:
-                            pass
+                            read_data=[0,0,0]
                         color = Color(read_data[0], read_data[1], read_data[2])
                         self.stripColorSet(color)
-                        #if read_data.rstrip() == 'quit':
-                        #    stop = True
-                        #else:
-                        #    client_sock.send(read_data.encode())
-            else:
-                print("No client is connected, SocketServer can't receive data")
-                stop = True
-
-        # Close socket
-        print('Closing connection with {}'.format(client_addr))
-        client_sock.close()
-        self.sock = None
+                    else:
+                        try:
+                            client_sock.close()
+                            self.read_list.remove(client_sock)
+                        except:
+                            pass
         self.stripColorSet(Color(0,0,0))
 #        return 0
 
